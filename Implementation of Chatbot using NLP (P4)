@@ -1,0 +1,654 @@
+server.js 
+const express = require('express'); 
+const bodyParser = require('body-parser'); 
+const cors = require('cors'); 
+const mongoose = require('mongoose'); 
+ 
+const app = express(); 
+const port = 5000; 
+ 
+ 
+// Connect to MongoDB 
+const connectionString = 'mongodb://localhost:27017/chatbotDB'; 
+// Ensure MongoDB is running 
+mongoose.connect(connectionString) 
+  .then(() => console.log('Connected to MongoDB')) 
+  .catch(err => console.error('MongoDB connection error:', err)); 
+ 
+ 
+// User Schema and Model 
+const userSchema = new mongoose.Schema({ 
+  
+ 
+ email: { type: String, required: true, unique: true }, 
+  password: { type: String, required: true }, 
+}); 
+ 
+HealBuddy       Department of MCA       
+BMS Institute of Technology and Management  13 
+ 
+ 
+const User = mongoose.model('User', userSchema); 
+ 
+// Register route 
+app.post('/api/register', async (req, res) => { 
+  const { email, password } = req.body; 
+ 
+  try { 
+    // Check if user already exists 
+    const existingUser = await User.findOne({ email }); 
+    if (existingUser) { 
+      return res.status(400).json({ message: 'User already 
+exists' }); 
+    } 
+ 
+    // Save user without encryption 
+    const newUser = new User({ email, password }); 
+    await newUser.save(); 
+    res.status(201).json({ message: 'User registered 
+successfully' }); 
+  } catch (error) { 
+    console.error('Error registering user:', error); 
+    res.status(500).json({ message: 'Error registering user' }); 
+  } 
+}); 
+ 
+// Login route 
+app.post('/api/login', async (req, res) => { 
+  const { email, password } = req.body; 
+ 
+  try { 
+    // Find user by email 
+    const user = await User.findOne({ email }); 
+    if (!user) { 
+      return res.status(401).json({ message: 'Invalid email or 
+password' }); 
+    } 
+ 
+    // Check if password matches 
+    if (password !== user.password) { 
+      return res.status(401).json({ message: 'Invalid email or 
+password' }); 
+    } 
+ 
+HealBuddy       Department of MCA       
+BMS Institute of Technology and Management  14 
+ 
+ 
+    // If successful, return confirmation 
+    res.json({ message: 'Login successful' }); 
+  } catch (error) { 
+    console.error('Error logging in:', error); 
+    res.status(500).json({ message: 'Error logging in' }); 
+  } 
+}); 
+ 
+// Start the server 
+app.listen(port, () => { 
+  console.log(`Server running on http://localhost:${port}`); 
+}); 
+ 
+App.js 
+ 
+import React from 'react'; 
+import { NavigationContainer } from '@react-navigation/native'; 
+import { createStackNavigator } from '@react-navigation/stack'; 
+import LoginScreen from './loginPage';  
+import SignupScreen from './SignupPage';  
+import ChatBot from './ChatBot'; //  
+ 
+const Stack = createStackNavigator(); 
+ 
+const App = () => { 
+  return ( 
+    <NavigationContainer> 
+      <Stack.Navigator initialRouteName="Login"> 
+        {/* Make sure these are valid components */} 
+        <Stack.Screen name="Login" component={LoginScreen} /> 
+        <Stack.Screen name="Signup" component={SignupScreen} /> 
+        <Stack.Screen name="ChatBot" component={ChatBot} /> 
+      </Stack.Navigator> 
+    </NavigationContainer> 
+  ); 
+}; 
+ 
+ 
+export default App; 
+ 
+ 
+ 
+ 
+HealBuddy       Department of MCA       
+BMS Institute of Technology and Management  15 
+ 
+ 
+ 
+ChatBot.js 
+ 
+import React, {useState, useRef} from 'react'; 
+import {Asset} from 'expo-asset'; 
+import View, Text, TextInput, FlatList, StyleSheet, 
+KeyboardAvoidingView, TouchableOpacity, Platform, ImageBackground 
+} from 'react-native'; 
+ 
+// Responses based on symptoms 
+const responses = { 
+  hi: 'Hello, Welcome! How can I assist you?', 
+  hello: 'Hello, Welcome! How can I assist you?', 
+  fever: 'Drink haldi milk.', 
+  cough: 'Drink hot water.', 
+  sorethroat: 'Drink honey and pepper.', 
+  stomachpain: 'Honey with lukewarm water.', 
+  eyesswelling: 'Apply salt water compress.', 
+  headache: 'Apply peppermint oil on the temples and drink ginger 
+tea.', 
+  cold: 'Drink warm lemon and honey tea, and inhale steam with 
+eucalyptus oil.', 
+  caugh:'drink cinemon tea', 
+  indigestion: 'Drink a glass of warm water with a teaspoon of 
+baking soda.', 
+  nausea: 'Drink ginger tea or chew on a piece of fresh ginger.', 
+  backpain: 'Apply a warm compress to the affected area and rest 
+well.', 
+  earpain: 'Use warm olive oil as ear drops for relief.', 
+  acne: 'Apply a paste of turmeric and honey to the affected 
+area.', 
+  toothache: 'Rinse your mouth with warm salt water and apply 
+clove oil.', 
+  constipation: 'Drink warm water with lemon juice and a pinch of 
+salt.', 
+  diarrhea: 'Drink rice water or have a ripe banana with a pinch 
+of salt.', 
+  fatigue: 'Take short breaks and stay hydrated.', 
+  musclepain: 'Stretch gently and apply a warm compress.', 
+  jointpain: 'Apply ice packs and rest the affected joint.', 
+  skinrash: 'Apply aloe vera gel to soothe irritation.', 
+  insectbites: 'Use a paste of baking soda and water to reduce 
+itching.', 
+HealBuddy       Department of MCA       
+BMS Institute of Technology and Management  16 
+ 
+ 
+  cuts: 'Clean with antiseptic and cover with a bandage.', 
+  bruises: 'Apply ice to reduce swelling and pain.', 
+  chappedlips: 'Use lip balm and drink plenty of water.', 
+  sunburn: 'Apply aloe vera gel and stay hydrated.', 
+  hairloss: 'Massage scalp with coconut oil and avoid tight 
+hairstyles.', 
+  dandruff: 'Use tea tree oil or coconut oil on the scalp.', 
+  dryskin: 'Moisturize regularly with coconut oil or olive oil.', 
+  oilyskin: 'Use a toner with witch hazel.', 
+  warts: 'Apply apple cider vinegar to the affected area.', 
+  calluses: 'Soak feet in warm water and use a pumice stone.', 
+  hangover: 'Hydrate with water and drink ginger tea.', 
+  soremuscles: 'Rest and use a foam roller for relief.', 
+  anxiety: 'Practice deep breathing exercises or meditation.', 
+  stress: 'Take time for hobbies and relaxation.', 
+  insomnia: 'Drink chamomile tea before bed.', 
+  heartburn: 'Chew gum or drink a glass of water.', 
+  bloating: 'Drink peppermint tea or warm water.', 
+  flatulence: 'Avoid beans and cruciferous vegetables.', 
+  thirst: 'Stay hydrated and drink water regularly.', 
+  sleepiness: 'Take a short walk or stretch.', 
+  motionsickness: 'Ginger tea or ginger candies can help.', 
+  dryeyes: 'Use lubricating eye drops and take breaks from 
+screens.', 
+  allergies: 'Take a warm shower and change clothes after being 
+outdoors.', 
+  sinus: 'Inhale steam with eucalyptus oil.', 
+  runnynose: 'Drink warm fluids to relieve symptoms.', 
+  itchyskin: 'Apply a cool compress or oatmeal bath.', 
+  drycough: 'Drink warm herbal tea with honey.', 
+  feverblisters: 'Apply aloe vera or over-the-counter creams.', 
+  restlesslegs: 'Stretch before bed and apply heat to legs.', 
+  weaknails: 'Apply olive oil to nourish and strengthen.', 
+  badbreath: 'Drink plenty of water and practice good oral 
+hygiene.', 
+  mouthulcers: 'Gargle with salt water and avoid spicy foods.', 
+  facialswelling: 'Apply cold compresses to the affected area.', 
+  hiccups: 'Hold your breath or drink water quickly.', 
+  memoryissues: 'Engage in puzzles and brain exercises.', 
+  blurredvision: 'Rest your eyes and avoid screens for a while.', 
+  earring: 'Ginger tea may help reduce symptoms.', 
+  snoring: 'Change sleeping positions and avoid alcohol before 
+bed.', 
+HealBuddy       Department of MCA       
+BMS Institute of Technology and Management  17 
+ 
+ 
+  fatigueafterexercise: 'Rest and hydrate properly.', 
+  cramps: 'Gently stretch and apply heat to the area.', 
+  itchiness: 'Use calamine lotion or moisturize.', 
+  chest_pain: 'Seek medical attention if severe; rest and relax.', 
+  highbloodpressure: 'Reduce salt intake and manage stress.', 
+  lowbloodpressure: 'Stay hydrated and consume salty snacks.', 
+  frequenturination: 'Limit fluid intake before bed.', 
+  musclespasms: 'Stretch and stay hydrated.', 
+  carpaltunnel: 'Rest and perform wrist stretches.', 
+  asthma: 'Inhale steam and avoid triggers.', 
+  sciatica: 'Stretch the lower back and apply heat.', 
+  thyroidissues: 'Eat a balanced diet rich in iodine.', 
+  dehydration: 'Drink electrolyte solutions or coconut water.', 
+  highcholesterol: 'Increase fiber intake and exercise 
+regularly.', 
+  vertigo: 'Sit down and focus on a fixed point.', 
+  urinarytractinfection: 'Drink plenty of water and cranberry 
+juice.', 
+  highfever: 'Stay hydrated and consult a doctor if persistent.', 
+  nauseamorning: 'Eat crackers before getting out of bed.', 
+  pimples: 'Use a spot treatment with benzoyl peroxide.', 
+  fatiguemenstrual: 'Rest and consider herbal teas for relief.', 
+  coldsores: 'Apply antiviral ointments and avoid sharing 
+utensils.', 
+  chestcough: 'Drink warm fluids and inhale steam.', 
+  throatclear: 'Gargle salt water and stay hydrated.', 
+  dehydrationexercise: 'Replenish fluids and electrolytes after 
+workouts.', 
+  acidity: 'Take a warm bath and drink herbal teas.', 
+  feveraftervaccination: 'Rest and hydrate well.', 
+  sorefeet: 'Soak in warm water and elevate them.', 
+  seasonalallergies: 'Stay indoors on high pollen days.', 
+  musclefatigue: 'Rest and hydrate properly.', 
+  irritationallergy: 'Wash affected area and apply cool 
+compress.', 
+}; 
+ 
+const ChatBot = () => { 
+  const [symptom, setSymptom] = useState(''); // To store user 
+input 
+  const [chat, setChat] = useState([ 
+    { id: 1, text: 'Hello, Welcome! How can I assist you?', sender: 
+'bot' } 
+HealBuddy       Department of MCA       
+BMS Institute of Technology and Management  18 
+ 
+  ]); // Initial bot message 
+  const flatListRef = useRef(null); 
+ 
+  // Handle sending the user's message 
+  const handleSend = () => { 
+    if (symptom.trim()) { 
+      const userMessage = { id: chat.length + 1, text: symptom, 
+sender: 'user' }; 
+      setChat(prevChat => [...prevChat, userMessage]); 
+      setSymptom(''); 
+ 
+      // Determine bot response based on symptom 
+      const response = responses[symptom.toLowerCase()] || 
+'Sorry, I do not have advice for this symptom.'; 
+       
+      setTimeout(() => { 
+        const botMessage = { 
+          id: chat.length + 2, 
+          text: response, 
+          sender: 'bot', 
+    }; 
+        setChat(prevChat => [...prevChat, botMessage]); 
+      }, 1000); 
+    } 
+  }; 
+ 
+  const renderItem = ({ item }) => ( 
+    <View 
+      style={[ 
+        styles.messageContainer, 
+        item.sender === 'user' ? styles.userMessage : 
+styles.botMessage, 
+      ]} 
+    > 
+      <Text style={styles.messageText}>{item.text}</Text> 
+    </View> 
+  ); 
+ 
+  return ( 
+    <ImageBackground 
+      source={require('./assets/picbg.png')} // Replace with your 
+image path 
+      style={styles.backgroundImage} 
+ 
+HealBuddy       Department of MCA       
+BMS Institute of Technology and Management  19 
+ 
+ 
+      resizeMode="cover" // Change how the image is resized to 
+cover the full space 
+    > 
+      <KeyboardAvoidingView 
+        style={styles.container} 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0} 
+      > 
+        <FlatList 
+          ref={flatListRef} 
+          data={chat} 
+          renderItem={renderItem} 
+          keyExtractor={(item) => item.id.toString()} 
+          style={styles.chatWindow} 
+          inverted 
+        /> 
+        <View style={styles.inputContainer}> 
+          <TextInput 
+            style={styles.input} 
+            value={symptom} 
+             
+         onChangeText={setSymptom} 
+            placeholder="Enter your symptom..." 
+          /> 
+          <TouchableOpacity style={styles.sendButton} 
+onPress={handleSend}> 
+            <Text style={styles.sendButtonText}>Send</Text> 
+          </TouchableOpacity> 
+        </View> 
+      </KeyboardAvoidingView> 
+    </ImageBackground> 
+  ); 
+}; 
+ 
+const styles = StyleSheet.create({ 
+  backgroundImage: { 
+    flex: 1, 
+    justifyContent: 'center', 
+  }, 
+  container: { 
+    flex: 1, 
+    padding: 10, 
+  }, 
+HealBuddy       Department of MCA       
+BMS Institute of Technology and Management  20 
+ 
+ 
+  chatWindow: { 
+    flex: 1, 
+  }, 
+  inputContainer: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    marginBottom: 20, 
+  }, 
+  input: { 
+    flex: 1, 
+    borderColor: 'gray', 
+    borderWidth: 1, 
+    marginRight: 10, 
+    padding: 10, 
+    borderRadius: 5, 
+  }, 
+  sendButton: { 
+    backgroundColor: '#007BFF', 
+    padding: 10, 
+    borderRadius: 5, 
+  }, 
+  sendButtonText: { 
+    color: '#fff', 
+    fontWeight: 'bold', 
+  }, 
+  messageContainer: { 
+    padding: 10; 
+    borderRadius: 10, 
+    marginVertical: 5, 
+    maxWidth: '75%', 
+  }, 
+  userMessage: { 
+    backgroundColor: '#007BFF', 
+    alignSelf: 'flex-end', 
+  }, 
+  botMessage: { 
+    backgroundColor: '#008000', 
+    alignSelf: 'flex-start', 
+  }, 
+  messageText: { 
+    color: '#fff', 
+    fontSize: 16, 
+  }, 
+HealBuddy       Department of MCA       
+BMS Institute of Technology and Management  21 
+ 
+ 
+}); 
+ 
+export default ChatBot; 
+ 
+loginPage.js 
+ 
+import React, { useState, useEffect } from 'react'; 
+import { View, TextInput, Pressable, Text, StyleSheet, Alert, 
+ImageBackground } from 'react-native'; 
+import { Asset } from 'expo-asset'; 
+import axios from 'axios'; 
+ 
+const LoginScreen = ({ navigation }) => { 
+    const [email, setEmail] = useState(''); 
+    const [password, setPassword] = useState(''); 
+    const [loading, setLoading] = useState(false); 
+ 
+    const cacheResourcesAsync = async () => { 
+        await Asset.loadAsync(require('./assets/loginpic.png')); 
+    }; 
+     useEffect(() => { 
+        cacheResourcesAsync(); 
+    }, []); 
+ const handleLogin = async () => { 
+        if (!email || !password) { 
+            Alert.alert('Error', 'Please fill in all fields'); 
+            return; 
+        } 
+ 
+        setLoading(true); 
+        try { 
+            const response = await 
+axios.post('http://192.168.0.147:5000/api/login', { email, 
+password }); 
+ 
+            if (response.status === 200) { 
+                const { token } = response.data; 
+                Alert.alert('Success', 'Login successful!'); 
+                navigation.navigate('ChatBot'); 
+            } else { 
+                Alert.alert('Error', 'Invalid credentials'); 
+            } 
+        } catch (error) { 
+HealBuddy       Department of MCA       
+BMS Institute of Technology and Management  22 
+ 
+ 
+            console.error('Login error', error); 
+            Alert.alert('Error', 'Something went wrong. Please 
+try again later.'); 
+        } finally { 
+            setLoading(false); 
+        } 
+    }; 
+    return ( 
+        <ImageBackground 
+            source={require('./assets/loginpic.png')} 
+            style={styles.backgroundImage} 
+            resizeMode="cover" 
+        > 
+                <View style={styles.container}> 
+                <TextInput 
+                    style={styles.input} 
+                    placeholder="Email" 
+                    keyboardType="email-address" 
+                    value={email} 
+                    onChangeText={(text) => setEmail(text)} 
+                    autoCapitalize="none" 
+               /> 
+                <TextInput 
+                    style={styles.input} 
+                    placeholder="Password" 
+                    value={password} 
+                    onChangeText={(text) => setPassword(text)} 
+                    secureTextEntry={true} 
+                /> 
+                <Pressable style={styles.button} 
+onPress={handleLogin} disabled={loading}> 
+                    <Text style={styles.buttonText}>{loading ? 
+'Logging in...' : 'Login'}</Text> 
+                </Pressable> 
+ 
+                <Pressable onPress={() => 
+navigation.navigate('Signup')}> 
+                    <Text style={styles.signupText}>Don't have an 
+account? Sign Up</Text> 
+                </Pressable> 
+            </View> 
+        </ImageBackground> 
+    ); 
+HealBuddy       Department of MCA       
+BMS Institute of Technology and Management  23 
+ 
+ 
+}; 
+const styles = StyleSheet.create({ 
+    backgroundImage: { 
+       flex: 1, 
+        justifyContent: 'center', 
+    }, 
+    container: { 
+        flex: 1, 
+        justifyContent: 'center', 
+        padding: 10, 
+    }, 
+    input: { 
+        height: 40,  
+        borderColor: ‘gray’, 
+        borderWidth: 1, 
+        marginBottom: 20, 
+        paddingHorizontal: 8, 
+        backgroundColor: ‘rgba(255, 255, 255, 0.8)’,  
+        borderRadius: 5, 
+    }, 
+    button: { 
+       backgroundColor: ‘#007BFF’, 
+        padding: 10, 
+        borderRadius: 5, 
+    }, 
+    buttonText: { 
+        color: ‘#fff’, 
+        textAlign: ‘center’, 
+        fontWeight: ‘bold’, 
+    }, 
+    signupText: { 
+        color: ‘blue’, 
+        textAlign: ‘center’, 
+        marginTop: 20, 
+    }, 
+}); 
+ 
+export default LoginScreen; 
+ 
+ 
+ 
+ 
+ 
+HealBuddy       Department of MCA       
+BMS Institute of Technology and Management  24 
+ 
+ 
+SingupPage.js 
+ 
+import React, { useState } from 'react'; 
+import { View, TextInput, Pressable, Text, StyleSheet, Alert } 
+from 'react-native'; 
+import axios from 'axios'; 
+ 
+const SignupScreen = ({ navigation }) => { 
+    const [email, setEmail] = useState(''); 
+    const [password, setPassword] = useState(''); 
+    const [loading, setLoading] = useState(false); 
+ 
+    const handleSignup = async () => { 
+        if (!email || !password) { 
+            Alert.alert('Error', 'Please fill in all fields'); 
+            return; 
+      } 
+        setLoading(true); 
+        try { 
+            const response = await 
+axios.post('http://192.168.0.147:5000/api/register', { email, 
+password }); // Replace with your local IP 
+ 
+            if (response.status === 201) { // Assuming the server 
+returns 201 for successful signup 
+             
+            Alert.alert('Success', 'Signup successful! Please log 
+in.'); 
+                navigation.navigate('Login'); // Navigate back to 
+the login screen 
+            } else { 
+                Alert.alert('Error', 'Signup failed. Please try 
+again.'); 
+            } 
+        }  
+catch (error) { 
+            console.error('Signup error', error); 
+            Alert.alert('Error', 'Something went wrong. Please 
+try again later.'); 
+        } finally { 
+            setLoading(false); 
+        } 
+    }; 
+HealBuddy       Department of MCA       
+BMS Institute of Technology and Management  25 
+ 
+ 
+    return ( 
+        <View style={styles.container}> 
+            <TextInput  style={styles.input} 
+                placeholder="Email" 
+                keyboardType="email-address" 
+                value={email} 
+                onChangeText={(text) => setEmail(text)} 
+                autoCapitalize="none" 
+            /> 
+            <TextInput 
+                style={styles.input} 
+                placeholder="Password" 
+                value={password} 
+ onChangeText={(text) => setPassword(text)} 
+                secureTextEntry={true} 
+            /> 
+            <Pressable style={styles.button} 
+onPress={handleSignup} disabled={loading}> 
+                <Text style={styles.buttonText}>{loading ? 
+'Signing up...' : 'Sign Up'}</Text> 
+ 
+       </Pressable> 
+        </View> 
+    ); 
+}; 
+const styles = StyleSheet.create({ 
+    container: { 
+        flex: 1, 
+  justifyContent: 'center', 
+        padding: 20, 
+    } 
+        input: { 
+        height: 40, 
+        borderColor: 'gray', 
+        borderWidth: 1, 
+        marginBottom: 20, 
+        paddingHorizontal: 8, 
+    }, 
+    button: { 
+        backgroundColor: '#007BFF', 
+        padding: 10, 
+    borderRadius: 5, 
+    }, 
+HealBuddy       Department of MCA       
+BMS Institute of Technology and Management  26 
+ 
+    buttonText: { 
+        color: '#fff', 
+        textAlign: 'center', 
+        fontWeight: 'bold', 
+    }, 
+}); 
+ 
+export default SignupScreen;  
+ 
+index.js 
+import { registerRootComponent } from 'expo'; 
+import App from './App';  
+ 
+registerRootComponent(App);
